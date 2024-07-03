@@ -1,13 +1,10 @@
-from utils.helper import formata_float_str_moeda
-
+from utils.helper import conectar, desconectar, formata_float_str_moeda
+from time import sleep
 class Produto:
-    contador: int = 1
 
     def __init__(self: object, nome: str, preco: float  ) -> None:
-        self.__codigo: int = Produto.contador
         self.__nome: str = nome
         self.__preco:float = preco
-        Produto.contador = Produto.contador +  1
     
     @property
     def nome(self)-> str:
@@ -17,10 +14,53 @@ class Produto:
     def preco(self)-> float:
         return self.__preco
     
-    @property
-    def codigo(self)-> int:
-        return self.__codigo
     
     def __str__(self) -> str:
-        return f'Código: {self.codigo} \nNome:{self.nome} \nPreço:{formata_float_str_moeda(self.preco)}'
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT * FROM produtos')
+        produtos = cursor.fetchall()
+
+        for produto in produtos:
+            return f'Código: {produto[0]} \nNome:{produto[1]} \nPreço:{formata_float_str_moeda(produto[2])}'
+        desconectar(conn)
+
+    def cadastrar_produto(self):
+
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute(f"INSERT INTO produtos (nome, preco) VALUES ('{self.nome}',{self.preco})")
+        conn.commit()
+
+        if cursor.rowcount == 1:
+            print(f'O produto {self.nome} foi cadastrado com sucesso.')
+        else:
+            print('Não foi possível cadastrar o produto.')
+        desconectar(conn)
+    
+
+
+
+    
+
+
+
+
+
+
+
+    '''def retorna_id(self):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT * FROM produtos')
+        produtos = cursor.fetchall()
+
+        for produto in produtos:
+            return produto[0]'''
+
+    
+
     

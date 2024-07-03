@@ -4,9 +4,9 @@ def main() -> None:
 from typing import List, Dict
 
 from time import sleep # sleep da um tempo na execução para rodar o código
-
+from time import sleep
 from models.produtos import Produto
-from utils.helper import formata_float_str_moeda
+from utils.helper import formata_float_str_moeda, conectar, desconectar
 
 list_produtos: list[Produto] = []
 carrinho: list[dict[Produto,int]] = []
@@ -56,9 +56,18 @@ def cadastrar_produto() -> None:  #Inserir
             obt = input('Informe o prduto: ')
             preco = float(input('Informe o preço: '))
 
-            produto = Produto(obt,preco)
-            
-            list_produtos.append(produto)
+            conn = conectar()
+            cursor = conn.cursor()
+
+            cursor.execute(f"INSERT INTO produtos (nome, preco) VALUES ('{obt}',{preco})")
+            conn.commit()
+
+            if cursor.rowcount == 1:
+                print(f'O produto {obt} foi cadastrado com sucesso.')
+            else:
+                print('Não foi possível cadastrar o produto.')
+            desconectar(conn)
+
             op = input('Inserir novo produto? [sS] Sim - [nN] Não, voltar para o Menu \nInforme: ')
             if op == 's' or op == 'S':
                 cadastrar_produto()
@@ -75,79 +84,86 @@ def cadastrar_produto() -> None:  #Inserir
 
 def listar_produto() -> None:  #Listar
     
-   try:
-       if len(list_produtos) > 0:
-           print('Lista de Produtos')
-           print('=================')
+        """
+        Função para listar os produtos
+        """
+        conn= conectar()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM produtos')
+        produtos = cursor.fetchall()
 
-           for i in list_produtos:
-               print(i)
-               print('--------------------')
-               sleep(1)
-           Menu()
-       else:
-           print('Ainda não tem produtos cadastrados')
-           sleep(2)
-           Menu()
-       
-   except(ValueError):
-       print('Valor informado incorreto! Tente novamente!')
-       sleep(2)
-       listar_produto()
+        if len(produtos) > 0:
+            print('listando Produtos...')
+            print('***************')
+            for produto in produtos:
+                print('--------------------------')
+                print(f'Código: {produto[0]}')
+                print(f'Produto: {produto[1]}')
+                print(f'Preço: {produto[2]}')
+                print('--------------------------')
+                sleep(1)
+        else:
+            print('Não existe produtos cadastrados.')
+            sleep(1)
+        desconectar(conn)
 
 
 def comprar_produto() -> None:
-    if len(list_produtos) > 0:
+        
+    conn= conectar()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM produtos')
+    produtos = cursor.fetchall()
+
+    if len(produtos) > 0:
         print("Informe o código do produto que deseja add ao carrinho.")
         print("======================================================")
         print("===============Lista de Produtos=================")
 
-        if len(list_produtos) > 0:
-           print('Lista de Produtos')
-           print('=================')
-
-           for i in list_produtos:
-               print(i)
-               print('--------------------')
-               sleep(1)
-        else:
-            print('não tem produto cadastrado!')
-            sleep(1)
-            Menu()
+        listar_produto()
+    
 
         codigo: int = int(input('Digite o código do produto dejado: '))
 
-        produto: Produto = pega_produto_por_codigo(codigo)
+        prod: int = pega_codigo(codigo)
 
-        if produto:
-            if len(carrinho) > 0:
-                tem_no_carrinho: bool = False
-                for item in carrinho:
-                    quant: int = item.get(produto)
-                    if quant:
-                        item[produto] = quant + 1
-                        print(f'O produto {produto.nome} agora possui quantidade {quant + 1} unidade no carrinho.')
-                        tem_no_carrinho = True
+        for produto in produtos:
+
+            if prod:
+                
+                if len(carrinho) > 0:
+                    qtd = 1
+                    if prod in carrinho:
+
+                        pass
+                    tem_no_carrinho: bool = False
+
+                    for item in carrinho:
+                        quant: int = item.get(produto)
+                        if quant:
+                            item[produto] = quant + 1
+                            print(f'O produto {produto[1]} agora possui{quant + 1} unidades no carrinho.')
+                            tem_no_carrinho = True
+                            sleep(2)
+                            Menu()
+                    if not tem_no_carrinho:
+                        prod: produto = {produto:1}
+                        carrinho.append(prod)
+                        print(f'O produto {produto.nome} foi add ao carrinho.')
                         sleep(2)
                         Menu()
-                if not tem_no_carrinho:
-                    prod: produto = {produto:1}
-                    carrinho.append(prod)
+
+
+                else:
+                    item = {produto: 1}
+                    carrinho.append(item)
                     print(f'O produto {produto.nome} foi add ao carrinho.')
-                    sleep(2)
+                    sleep(1)
                     Menu()
-
-
             else:
-                item = {produto: 1}
-                carrinho.append(item)
-                print(f'O produto {produto.nome} foi add ao carrinho.')
-                sleep(1)
+                print(F"O PRODUTO COM O CÓDIGO {codigo} NÃO FOI ENCONTRADO ")
+                sleep(2)
                 Menu()
-        else:
-            print(F"O PRODUTO COM O CÓDIGO {codigo} NÃO FOI ENCONTRADO ")
-            sleep(2)
-            Menu()
 
     else:
         print('Não tem produtos cadastrados.')
@@ -197,13 +213,21 @@ def fechar_pedido()-> None:
         Menu()
 
 
-def pega_produto_por_codigo(codigo: int) -> Produto:
-    p: Produto = None
+def pega_codigo(codigo: int) -> int:
+    p: int = None
 
-    for produto in list_produtos:
-        if produto.codigo == codigo:
-            p = produto
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT * FROM produtos')
+    produtos = cursor.fetchall()
+
+    for produto in produtos:
+        if produto[0] == codigo:
+            p = produto[0]
+    desconectar(conn)
     return p
+    
 
 
 
