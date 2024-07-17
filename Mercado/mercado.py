@@ -2,7 +2,7 @@ def main() -> None:
     main()
 
 from typing import List, Dict
-
+import MySQLdb 
 from time import sleep # sleep da um tempo na execução para rodar o código
 from time import sleep
 from models.produtos import Produto
@@ -59,7 +59,7 @@ def cadastrar_produto() -> None:  #Inserir
             conn = conectar()
             cursor = conn.cursor()
 
-            cursor.execute(f"INSERT INTO produtos (nome, preco) VALUES ('{obt}',{preco})")
+            cursor.execute(f"INSERT INTO produtos (produto, preco) VALUES ('{obt}',{preco})")
             conn.commit()
 
             if cursor.rowcount == 1:
@@ -122,74 +122,79 @@ def comprar_produto() -> None:
 
         listar_produto()
     
-
-        codigo: int = int(input('Digite o código do produto dejado: '))
+        codigo: int = int(input('Digite o código do produto desejado: '))
 
         prod: int = pega_codigo(codigo)
 
-        for produto in produtos:
-
-            if prod:
-                
-                if len(carrinho) > 0:
-                    qtd = 1
-                    if prod in carrinho:
-
-                        pass
-                    tem_no_carrinho: bool = False
-
-                    for item in carrinho:
-                        quant: int = item.get(produto)
-                        if quant:
-                            item[produto] = quant + 1
-                            print(f'O produto {produto[1]} agora possui{quant + 1} unidades no carrinho.')
-                            tem_no_carrinho = True
-                            sleep(2)
-                            Menu()
-                    if not tem_no_carrinho:
-                        prod: produto = {produto:1}
-                        carrinho.append(prod)
-                        print(f'O produto {produto.nome} foi add ao carrinho.')
-                        sleep(2)
-                        Menu()
+        if prod:
+            qtd = int(input("Qual é a quantidade desejada ?"))
+            compra = (codigo,qtd)
+            carrinho.append(compra)
+            print('Compra Registrada com sucesso!')
 
 
-                else:
-                    item = {produto: 1}
-                    carrinho.append(item)
-                    print(f'O produto {produto.nome} foi add ao carrinho.')
-                    sleep(1)
-                    Menu()
-            else:
-                print(F"O PRODUTO COM O CÓDIGO {codigo} NÃO FOI ENCONTRADO ")
-                sleep(2)
+            op = input('Inserir novo produto no carrinho? [sS] Sim - [nN] Não, voltar para o Menu \nInforme: ')
+
+            if op == 's' or op == 'S':
+                comprar_produto()
+            elif op == 'n' or op == 'N':
                 Menu()
+            else:
+                print("Valor invalido! Tente 's' ou 'n' ")
+
+        else:
+            print(f"O código digitado [{codigo}] não corresponde a um produto da lista. ")
+            sleep(1)
+            comprar_produto()
+
 
     else:
         print('Não tem produtos cadastrados.')
         sleep(2)
         Menu()
-
+        
+    desconectar(conn)
 
 def Visualizar_carrinho() -> None:
+
     if len(carrinho) > 0:
         print("=================")
-        print('Produtos do carrinho.')
+        print('Produtos no carrinho.')
         print("=================")
 
+        print(carrinho)
+        total = 0
+
         for item in carrinho:
-            for dados in item.items():
-                print(dados[0])
-                print(f'Quantidade: {dados[1]}')
-                print(f'-----------------------')
-                sleep(1)
+            dado = busca_nome_preco(item[0])
+            print(f'Produto: {dado[0]} Preço: {dado[1]} Quantidade: {item[1]}')
+            print("----------------------------------------------------------")
+            sleep(1)
+
+            calc = dado[1] * item[1]
+            total = total + calc
+
+        print(f'Total da compra: {total} ')
+
+        op = input(f'Finalizar compra [Ss] SIM [Nn] Não ?')
+
+        if op == 's' or op == 'S':
+            fechar_pedido()
+        elif op == 'n' or op == 'N':
             Menu()
+        else:
+            print("Valor invalido! Tente 's' ou 'n' ")
+
+
+
+
 
     else:
         print('Ainda não existe produtos no carrinho')
         sleep(2)
         Menu()
 
+"""Editar visualizar carrinho, dar opção de mudar quantidade e se tiver um produto igual no carrinho, só somar a quantidade"""
 
 def fechar_pedido()-> None:
     if len(carrinho) >0:
@@ -229,7 +234,20 @@ def pega_codigo(codigo: int) -> int:
     return p
     
 
+def busca_nome_preco(id):
 
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT * FROM produtos')
+    produtos = cursor.fetchall()
+    
+    for produto in produtos:
+        if produto[0] == id:
+            nome = produto[1]
+            preco = produto[2]
+            return (nome,preco)
+    desconectar(conn)
 
 
 
