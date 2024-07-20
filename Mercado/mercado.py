@@ -1,15 +1,12 @@
 def main() -> None:
     main()
 
-from typing import List, Dict
-import MySQLdb 
 from time import sleep # sleep da um tempo na execução para rodar o código
-from time import sleep
 from models.produtos import Produto
 from utils.helper import formata_float_str_moeda, conectar, desconectar
 
 list_produtos: list[Produto] = []
-carrinho: list[dict[Produto,int]] = []
+carrinho: list[tuple[int,int]] = [[2,2], [3,2],[1,4],[5,2]]
 
 
 
@@ -49,33 +46,40 @@ def Menu() -> None:
 
 
 def cadastrar_produto() -> None:  #Inserir
-    print('Cadastro de Produto')
-    print('===================')
+    print('--------Cadastro de Produto-----------')
+    print('--------------------------------------')
+    print("-----Digite 'menu' para voltar--------)")
 
     try:
             obt = input('Informe o prduto: ')
-            preco = float(input('Informe o preço: '))
 
-            conn = conectar()
-            cursor = conn.cursor()
-
-            cursor.execute(f"INSERT INTO produtos (produto, preco) VALUES ('{obt}',{preco})")
-            conn.commit()
-
-            if cursor.rowcount == 1:
-                print(f'O produto {obt} foi cadastrado com sucesso.')
-            else:
-                print('Não foi possível cadastrar o produto.')
-            desconectar(conn)
-
-            op = input('Inserir novo produto? [sS] Sim - [nN] Não, voltar para o Menu \nInforme: ')
-            if op == 's' or op == 'S':
-                cadastrar_produto()
-            elif op == 'n' or op == 'N':
+            if obt == 'menu':
                 Menu()
             else:
-                print("Valor invalido! Tente 's' ou 'n' ")
+                preco = float(input('Informe o preço: '))
 
+                conn = conectar()
+                cursor = conn.cursor()
+
+                cursor.execute(f"INSERT INTO produtos (produto, preco) VALUES ('{obt}',{preco})")
+                conn.commit()
+
+                if cursor.rowcount == 1:
+                    print(f'O produto {obt} foi cadastrado com sucesso.')
+                else:
+                    print('Não foi possível cadastrar o produto.')
+                desconectar(conn)
+
+                op = input('Inserir novo produto? [sS] Sim - [nN] Não, voltar para o Menu \nInforme: ')
+                if op == 's' or op == 'S':
+                    cadastrar_produto()
+                elif op == 'n' or op == 'N':
+                    Menu()
+                else:
+                    print("Valor invalido! Tente 's' ou 'n' ")
+
+
+            
     except(ValueError) as err:
         print("Valor invalido! Tente 's' ou 'n'")
         sleep(1)
@@ -128,7 +132,7 @@ def comprar_produto() -> None:
 
         if prod:
             qtd = int(input("Qual é a quantidade desejada ?"))
-            compra = (codigo,qtd)
+            compra = [codigo,qtd]
             carrinho.append(compra)
             print('Compra Registrada com sucesso!')
 
@@ -155,7 +159,8 @@ def comprar_produto() -> None:
         
     desconectar(conn)
 
-def Visualizar_carrinho() -> None:
+
+def Visualizar_carrinho() -> None: #Update e Deletar
 
     if len(carrinho) > 0:
         print("=================")
@@ -163,28 +168,59 @@ def Visualizar_carrinho() -> None:
         print("=================")
 
         print(carrinho)
+        print(carrinho[0][1])
+        
         total = 0
 
         for item in carrinho:
             dado = busca_nome_preco(item[0])
-            print(f'Produto: {dado[0]} Preço: {dado[1]} Quantidade: {item[1]}')
+            print(f'Código: {item[0]} Produto: {dado[0]} Preço: {dado[1]} Quantidade: {item[1]}')
             print("----------------------------------------------------------")
             sleep(1)
 
             calc = dado[1] * item[1]
             total = total + calc
 
-        print(f'Total da compra: {total} ')
+        up_drop = int(input(f'Deseja alterar a quantidade ou apagar algum item do carrinho ? \n[1] Sim [2] Não  '))
 
-        op = input(f'Finalizar compra [Ss] SIM [Nn] Não ?')
+        if up_drop == 1:
 
-        if op == 's' or op == 'S':
-            fechar_pedido()
-        elif op == 'n' or op == 'N':
-            Menu()
+            op = int(input('alterar ou apagar ? \n[1] Alterar [2] Apagar '))
+
+            if op == 1:
+                cod_alt = int(input('Digite o código do produto para alterar:  '))
+                nova_qtd = int(input('Digite a nova quantidade: '))
+
+                alterar_qtd(cod_alt,nova_qtd)
+                Visualizar_carrinho()
+
+            elif op == 2:
+                cod_drop = int(input("Digite o código do produto para deletar: "))
+
+
+            else:
+                print('Valor incorreto tente os números correspondentes.')
+                sleep(3)
+                Visualizar_carrinho()
+
+
+        elif up_drop == 2:
+
+            print(f'Total da compra: {total} ')
+
+            op = input(f'Finalizar compra [Ss] SIM [Nn] Não ?')
+
+            if op == 's' or op == 'S':
+                fechar_pedido()
+            elif op == 'n' or op == 'N':
+                Menu()
+            else:
+                print("Valor invalido! Tente 's' ou 'n' ")
+
         else:
-            print("Valor invalido! Tente 's' ou 'n' ")
-
+            print('Valor incorreto tente os números correspondentes.')
+            sleep(3)
+            Visualizar_carrinho()
 
 
 
@@ -197,21 +233,37 @@ def Visualizar_carrinho() -> None:
 """Editar visualizar carrinho, dar opção de mudar quantidade e se tiver um produto igual no carrinho, só somar a quantidade"""
 
 def fechar_pedido()-> None:
-    if len(carrinho) >0:
+    if len(carrinho) > 0:
         valor_total: float = 0
 
-        print("Produtos do Carrinho")
+        print("---------Produtos do Carrinho---------------")
+        print("--------------------------------------------")
+        
+
         for item in carrinho:
-            for dados in item.itens():
-                print(dados[0])
-                print(f'Quantidade: {dados[1]}')
-                valor_total += dados[0].preco * dados[1]
-                print('----------------------------------')
-                sleep(2)
-        print(f"Sua fatura é {formata_float_str_moeda(valor_total)}")
-        print('Volte sempre!')
-        carrinho.clear()
-        sleep(5)
+            dado = busca_nome_preco(item[0])
+            print(f'Produto: {dado[0]} Preço: {dado[1]} Quantidade: {item[1]}')
+            print("----------------------------------------------------------")
+            sleep(1)
+
+            calc = dado[1] * item[1]
+            valor_total = valor_total + calc
+
+        finalizar = int(input(f'Deseja finalizar o pedido? [1] Sim - [2] Não (Menu) '))
+
+        if finalizar == 1:
+            print(f'Sua fatura é: {valor_total} ')
+            print('Obrigado volte sempre!')
+            carrinho.clear()
+            sleep(6)
+            Menu()
+        elif finalizar == 2:
+            Menu()
+            sleep(2)
+        else:
+            print('Valor incorreto, tente 1 para sim, 2 para não (Menu)')
+            fechar_pedido()
+
     else:
         print('Não tem itens no carrinho')
         sleep(2)
@@ -250,6 +302,26 @@ def busca_nome_preco(id):
     desconectar(conn)
 
 
+def alterar_qtd(cod,qtd):
+
+    for item in carrinho:
+
+        if cod == item[0]:
+            item[1] = qtd
+            print('Ateração bem sucedida! ')
+            sleep(2)
+        elif cod != item[0]:
+            continue
+        else:
+            print('oioi número não correspondente')
+    
+    return carrinho
+
+# def apagar_prod(cod):
+
+    '''for item in carrinho:
+        if item[0] == cod:
+            carrinho.pop(0)'''
 
 
 if __name__ == '__main__':
