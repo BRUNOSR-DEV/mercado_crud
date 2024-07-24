@@ -2,12 +2,9 @@ def main() -> None:
     main()
 
 from time import sleep # sleep da um tempo na execução para rodar o código
-from models.produtos import Produto
 from utils.helper import formata_float_str_moeda, conectar, desconectar
 
-list_produtos: list[Produto] = []
-carrinho: list[tuple[int,int]] = [[2,2], [3,2],[1,4],[5,2]]
-
+carrinho: list[list[int,int]] = []
 
 
 def Menu() -> None:
@@ -17,7 +14,7 @@ def Menu() -> None:
     try:
 
         while True:
-            escolha = int(input(f' \n[1]- Cadastrar Produto \n[2]- Listar Produto \n[3]- Compra o produto \n[4]- Visualizar Carrinho \n[5]- Finalizar Pedido \n[6] Sair \nEscolha: '))
+            escolha = int(input(f' \n[1]- Cadastrar Produto \n[2]- Listar Produtos \n[3]- Alterar Produto \n[4]- Deletar Produto \n[5]- Comprar o produto \n[6]- Visualizar, Alterar ou Deletar item do Carrinho \n[7]- Finalizar Pedido \n[8] Sair \nDigite: '))
 
             if escolha == 1:
                 cadastrar_produto()
@@ -26,15 +23,21 @@ def Menu() -> None:
                 listar_produto()
                 break
             elif escolha == 3:
-                comprar_produto()
+                alterar_produto()
                 break
             elif escolha == 4:
-                Visualizar_carrinho()
+                apagar_produto()
                 break
             elif escolha == 5:
-                fechar_pedido()
+                comprar_produto()
                 break
             elif escolha == 6:
+                Visualizar_carrinho()
+                break
+            elif escolha == 7:
+                fechar_pedido()
+                break
+            elif escolha == 8:
                 print('Obrigado! Volte sempre!')
                 break
             else:
@@ -97,8 +100,8 @@ def listar_produto() -> None:  #Listar
         produtos = cursor.fetchall()
 
         if len(produtos) > 0:
-            print('listando Produtos...')
-            print('***************')
+            print('--- Listando Produtos ---')
+            print('-------------------------')
             for produto in produtos:
                 print('--------------------------')
                 print(f'Código: {produto[0]}')
@@ -110,6 +113,116 @@ def listar_produto() -> None:  #Listar
             print('Não existe produtos cadastrados.')
             sleep(1)
         desconectar(conn)
+
+
+def alterar_produto(): #Update nos produtos
+
+    print('--------- Alterar de Produtos-------------')
+    print('------------------------------------------')
+
+    listar_produto()
+
+    op_alt = int(input('Qual o código do produto que deseja alterar? '))
+
+    escolha = int(input('Qual campo deseja alterar : [1] Nome Produto [2] Preço Produto\n Digite [3] Para voltar para o Menu ')) 
+
+    cod_prod = pega_codigo(op_alt)
+
+    if cod_prod:
+        conn= conectar()
+        cursor = conn.cursor()
+
+        if escolha == 1:
+            alt = input('Digite o nome do produto: ')
+            cursor.execute(f"UPDATE produtos set produto = '{alt}' WHERE id = {cod_prod} ")
+            conn.commit()
+
+        elif escolha == 2:
+            alt = input('Digite o preço do produto: ')
+            cursor.execute(f"UPDATE produtos set preco = '{alt}' WHERE id = {cod_prod} ")
+            conn.commit()
+        
+        elif escolha == 3:
+            Menu()
+
+        else:
+            print('Valor incorreto! Tente [1] ou [2] ')
+            sleep(2)
+            alterar_produto()
+        
+        if cursor.rowcount == 1:
+            print(f'O dado {alt} foi inserido com sucesso. att bem sucedido')
+        else:
+            print('Não foi possível atualizar o valor.')
+
+        continuar = int(input('Dejesa continuar alterando ? [1] Sim [2] Não '))
+        if continuar == 1:
+            alterar_produto()
+        elif continuar == 2:
+            Menu()
+        else:
+            print('Valor incorreto! ')
+            sleep(2)
+            Menu()
+
+        desconectar(conn)
+    
+    else:
+        print('Código não encontrado, ou valor incorreto! ')
+        sleep(3)
+        alterar_produto()
+
+
+def apagar_produto(): # Deletar produtos
+
+    print('--------- Deletar Produtos-------------')
+    print('---------------------------------------')
+
+    listar_produto()
+
+    escolha = int(input('Qual o código do produto que deseja apagar ? '))
+
+    cod_prod = pega_codigo(escolha)
+
+    if cod_prod:
+        nome_p = busca_nome_preco(cod_prod)
+
+        duvida = int(input(f'Tem certeza que dejesa apagar o produto {nome_p[0]} de código {cod_prod} \n[1] Sim [2] Não  '))
+
+        if duvida == 1:
+            conn= conectar()
+            cursor = conn.cursor()
+            cursor.execute(f"DELETE FROM produtos WHERE id= {cod_prod}")
+            conn.commit()
+
+            if cursor.rowcount == 1:
+                print(f'O Produto {nome_p[0]} foi Apagado com sucesso. Atualização bem sucedido')
+            else:
+                print('Não foi possível Deletar o valor.')
+
+            desconectar(conn)
+
+            continuar = int(input('Dejesa Apagar outro produto ? [1] Sim [2] Não '))
+            if continuar == 1:
+                apagar_produto()
+            elif continuar == 2:
+                Menu()
+            else:
+                print('Valor incorreto! ')
+                sleep(2)
+                Menu()
+
+        elif duvida == 2:
+            Menu()
+            sleep(2)
+        else:
+            print('Valor incorreto! ')
+            sleep(2)
+            Menu()
+    else:
+        print('Código não correspondente ou valor incorreto! ')
+        sleep(2)
+        Menu()
 
 
 def comprar_produto() -> None:
@@ -160,7 +273,7 @@ def comprar_produto() -> None:
     desconectar(conn)
 
 
-def Visualizar_carrinho() -> None: #Update e Deletar
+def Visualizar_carrinho() -> None: #Update e Deletar no carrinho
 
     if len(carrinho) > 0:
         print("=================")
@@ -168,7 +281,6 @@ def Visualizar_carrinho() -> None: #Update e Deletar
         print("=================")
 
         print(carrinho)
-        print(carrinho[0][1])
         
         total = 0
 
@@ -196,7 +308,9 @@ def Visualizar_carrinho() -> None: #Update e Deletar
 
             elif op == 2:
                 cod_drop = int(input("Digite o código do produto para deletar: "))
-
+                apagar_prod(cod_drop)
+                sleep(2)
+                Visualizar_carrinho()
 
             else:
                 print('Valor incorreto tente os números correspondentes.')
@@ -206,13 +320,13 @@ def Visualizar_carrinho() -> None: #Update e Deletar
 
         elif up_drop == 2:
 
-            print(f'Total da compra: {total} ')
+            print(f'Total da compra: {formata_float_str_moeda(total)} ')
 
-            op = input(f'Finalizar compra [Ss] SIM [Nn] Não ?')
+            op = input(f'Finalizar compra [1] SIM [2] Não ?')
 
-            if op == 's' or op == 'S':
+            if op == 1:
                 fechar_pedido()
-            elif op == 'n' or op == 'N':
+            elif op == 2:
                 Menu()
             else:
                 print("Valor invalido! Tente 's' ou 'n' ")
@@ -230,9 +344,9 @@ def Visualizar_carrinho() -> None: #Update e Deletar
         sleep(2)
         Menu()
 
-"""Editar visualizar carrinho, dar opção de mudar quantidade e se tiver um produto igual no carrinho, só somar a quantidade"""
 
 def fechar_pedido()-> None:
+
     if len(carrinho) > 0:
         valor_total: float = 0
 
@@ -252,7 +366,7 @@ def fechar_pedido()-> None:
         finalizar = int(input(f'Deseja finalizar o pedido? [1] Sim - [2] Não (Menu) '))
 
         if finalizar == 1:
-            print(f'Sua fatura é: {valor_total} ')
+            print(f'Sua fatura é: {formata_float_str_moeda(valor_total)} ')
             print('Obrigado volte sempre!')
             carrinho.clear()
             sleep(6)
@@ -302,7 +416,7 @@ def busca_nome_preco(id):
     desconectar(conn)
 
 
-def alterar_qtd(cod,qtd):
+def alterar_qtd(cod,qtd): # Altera produto do carrinho
 
     for item in carrinho:
 
@@ -317,11 +431,22 @@ def alterar_qtd(cod,qtd):
     
     return carrinho
 
-# def apagar_prod(cod):
 
-    '''for item in carrinho:
+def apagar_prod(cod): #Deleta produto do carrinho
+
+    cont = 0
+
+    for item in carrinho:
         if item[0] == cod:
-            carrinho.pop(0)'''
+            carrinho.pop(cont)
+            print('Produto apagado do carrinho com sucesso! ')
+        elif item[0] != cod:
+            cont = cont + 1
+        else:
+            print(f'Valor incorreto! tente novamente')
+        
+        
+
 
 
 if __name__ == '__main__':
